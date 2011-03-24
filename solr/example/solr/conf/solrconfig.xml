@@ -759,6 +759,9 @@
          <str>nameOfCustomComponent2</str>
        </arr>
       -->
+     <arr name="last-components">
+       <str>pivot</str> <!-- not included by default -->
+     </arr>
     </requestHandler>
 
   <!-- A Robust Example
@@ -1064,6 +1067,8 @@
        always be executed after the "last-components" 
        
      -->
+	<searchComponent name="pivot"     class="org.apache.solr.handler.component.PivotFacetComponent" />
+
 
    <!-- Spell Check
 
