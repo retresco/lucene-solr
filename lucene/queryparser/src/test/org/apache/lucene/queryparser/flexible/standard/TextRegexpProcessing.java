@@ -26,10 +26,9 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 
@@ -42,65 +41,18 @@ public class TextRegexpProcessing extends LuceneTestCase {
 
     final StandardQueryParser parser = new StandardQueryParser();
     parser.setMultiFields(fields);
+    parser.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
     parser.setAnalyzer(new MockAnalyzer(random()));
 
-    Query q = parser.parse("/ab.+/", null);
-    assertEquals("b:ab.+ t:ab.+", q.toString());
+    BooleanQuery exp = new BooleanQuery();
+    exp.add(new BooleanClause(new RegexpQuery(new Term("b", "ab.+")), BooleanClause.Occur.MUST));
+    exp.add(new BooleanClause(new RegexpQuery(new Term("t", "ab.+")), BooleanClause.Occur.MUST));
 
-    q = parser.parse("test:/[abc]?[0-9]/", null);
-    assertEquals("test:[abc]?[0-9]", q.toString());
+    assertEquals(exp, parser.parse("/ab.+/", null));
 
-  }
+    RegexpQuery regexpQueryexp = new RegexpQuery(new Term("test", "[abc]?[0-9]"));
 
-  public void testRegexQueryFinding() throws Exception {
-
-    // prepare the index
-    final Analyzer analyzer = new MockAnalyzer(random());
-    final Directory ramDir = newDirectory();
-    final IndexWriter iw = new IndexWriter(ramDir, newIndexWriterConfig
-        (TEST_VERSION_CURRENT, analyzer));
-
-    Document doc = new Document();
-    doc.add(newField("body", "Definitiv ein 2012", TextField.TYPE_UNSTORED));
-    iw.addDocument(doc);
-
-    doc = new Document();
-    doc.add(newField("body", "Definitiv kein 2013", TextField.TYPE_UNSTORED));
-    iw.addDocument(doc);
-
-    iw.close();
-
-    // the index searcher
-    final IndexReader ir = DirectoryReader.open(ramDir);
-    final IndexSearcher is = new IndexSearcher(ir);
-
-    // prepare the parser
-    final StandardQueryParser parser = new StandardQueryParser();
-    parser.setAnalyzer(analyzer);
-    parser.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
-
-    // search for "2012"
-    Query q = parser.parse("body:/2012/", null);
-    ScoreDoc[] hits = is.search(q, null, 1000).scoreDocs;
-    assertEquals(1, hits.length);
-
-    // search for "2013"
-    q = parser.parse("body:/2013/", null);
-    hits = is.search(q, null, 1000).scoreDocs;
-    assertEquals(1, hits.length);
-
-    // search for 201[23]
-    q = parser.parse("body:/201[23]/", null);
-    hits = is.search(q, null, 1000).scoreDocs;
-    assertEquals(2, hits.length);
-
-    // search for [k]?ein
-    q = parser.parse("body:/[k]?ein/", null);
-    hits = is.search(q, null, 1000).scoreDocs;
-    assertEquals(2, hits.length);
-
-    ir.close();
-    ramDir.close();
+    assertEquals(regexpQueryexp, parser.parse("test:/[abc]?[0-9]/", null));
 
   }
 
